@@ -57,7 +57,7 @@
 
   <!-- Client-side JS -->
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbwn7ko4zetXmk_ulbm30Nv3eaK35g6Q8VTNqAr1jp6Nb8e8wAA7y0dQ0fj_Zc36OnU/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbylwpya5EFhBOZ96KGpBYfs2EcO39MbxbXzwf7ZXOj4fZ0xIdZQLO5pjDkQqwcrKbXc/exec';
 
     const locationContainer = document.getElementById('location-container');
     const mainContent = document.getElementById('main-content');
@@ -81,7 +81,8 @@
     ];
 
     function pointInPolygon(point, vs) {
-      const x = point.lng, y = point.lat; let inside = false;
+      const x = point.lng, y = point.lat;
+      let inside = false;
       for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
         const xi = vs[i].lng, yi = vs[i].lat;
         const xj = vs[j].lng, yj = vs[j].lat;
@@ -110,16 +111,24 @@
       navigator.geolocation.getCurrentPosition(
         pos => {
           const point = {lat: pos.coords.latitude, lng: pos.coords.longitude};
-          if (pointInPolygon(point, areaCoords)) enableForm(); else showManualConfirm();
-        }, err => showManualConfirm(), {enableHighAccuracy:true, timeout:5000}
+          if (pointInPolygon(point, areaCoords)) {
+            enableForm();
+          } else {
+            showManualConfirm();
+          }
+        },
+        err => showManualConfirm(),
+        {enableHighAccuracy:true, timeout:5000}
       );
-    } else showManualConfirm();
+    } else {
+      showManualConfirm();
+    }
 
     function formatDate(date) { return date.toLocaleDateString('fi-FI'); }
     function formatTime(date) { return date.toLocaleTimeString('fi-FI', {hour:'2-digit',minute:'2-digit'}); }
     function saveArrival(data) { localStorage.setItem('arrivalData', JSON.stringify(data)); }
     function clearArrival() { localStorage.removeItem('arrivalData'); }
-    function getArrival() { const raw = localStorage.getItem('arrivalData'); return raw?JSON.parse(raw):null; }
+    function getArrival() { const raw = localStorage.getItem('arrivalData'); return raw ? JSON.parse(raw) : null; }
 
     function showArrival(data) {
       arrivalMessage.textContent = `Hei ${data.etunimi} ${data.sukunimi}, olet saapunut työmaalle ${data.saapumisaika}`;
@@ -128,21 +137,34 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       const stored = getArrival();
-      if (stored) { firstNameInput.value = stored.etunimi; lastNameInput.value = stored.sukunimi; phoneInput.value = stored.puhelin; enableForm(); showArrival(stored); }
+      if (stored) {
+        firstNameInput.value = stored.etunimi;
+        lastNameInput.value = stored.sukunimi;
+        phoneInput.value = stored.puhelin;
+        enableForm();
+        showArrival(stored);
+      }
     });
 
     actionButton.addEventListener('click', () => {
-      const etunimi = firstNameInput.value.trim(), sukunimi = lastNameInput.value.trim(), puhelin = phoneInput.value.trim();
-      if (!etunimi || !sukunimi || !puhelin) { alert('Täytä kaikki kentät ennen ilmoittautumista.'); return; }
+      const etunimi = firstNameInput.value.trim();
+      const sukunimi = lastNameInput.value.trim();
+      const puhelin = phoneInput.value.trim();
+      if (!etunimi || !sukunimi || !puhelin) {
+        alert('Täytä kaikki kentät ennen ilmoittautumista.');
+        return;
+      }
       const now = new Date();
       const saapumisaika = `${formatDate(now)} ${formatTime(now)}`;
       const data = {action:'arrival', etunimi, sukunimi, puhelin, saapumisaika};
-      saveArrival(data); showArrival(data);
+      saveArrival(data);
+      showArrival(data);
       fetch(scriptURL, {method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     });
 
     leaveButton.addEventListener('click', () => {
-      const stored = getArrival(); const data = {action:'departure', etunimi:stored.etunimi, sukunimi:stored.sukunimi};
+      const stored = getArrival();
+      const data = {action:'departure', etunimi:stored.etunimi, sukunimi:stored.sukunimi};
       clearArrival(); arrivalContainer.classList.add('hidden'); thankContainer.classList.remove('hidden');
       fetch(scriptURL, {method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     });
