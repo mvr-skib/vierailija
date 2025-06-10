@@ -1,0 +1,102 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bss SKiB Kampus työmaa - Vierailija ilmoittautuminen</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex flex-col justify-between items-center h-screen overflow-hidden">
+  <!-- Header -->
+  <header class="w-full text-center p-4">
+    <h1 class="text-2xl font-bold">Bss SKiB Kampus työmaa - Vierailija ilmoittautuminen</h1>
+  </header>
+
+  <!-- Arrival Form -->
+  <main id="form-container" class="flex flex-col items-center space-y-4">
+    <input id="first-name" type="text" placeholder="Etunimi" class="w-64 p-2 border rounded" />
+    <input id="last-name" type="text" placeholder="Sukunimi" class="w-64 p-2 border rounded" />
+    <input id="phone" type="tel" placeholder="Puhelinnumero" class="w-64 p-2 border rounded" />
+    <button id="action-button" class="px-4 py-2 bg-blue-500 text-white rounded">Olen saapunut työmaalle</button>
+  </main>
+
+  <!-- After Arrival -->
+  <main id="arrival-container" class="hidden flex flex-col items-center space-y-4">
+    <p id="arrival-message" class="text-lg font-medium"></p>
+    <button id="leave-button" class="px-4 py-2 bg-red-500 text-white rounded">Olen poistunut työmaalta!</button>
+  </main>
+
+  <!-- Thank You -->
+  <main id="thank-container" class="hidden flex items-center">
+    <p class="text-lg font-medium">Kiitos! Ilmoituksesi on vastaanotettu.</p>
+  </main>
+
+  <!-- Footer -->
+  <footer class="w-full text-center text-sm p-4">
+    Työmaan yhteystiedot: Saapuminen: Eteläpuisto 13, 28100 Pori ja Puhelinnumero: Kalle Uusitalo +358 44 015 3286 MVR-Yhtymä Oy
+  </footer>
+
+  <!-- Client-side JavaScript -->
+  <script>
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbylwpya5EFhBOZ96KGpBYfs2EcO39MbxbXzwf7ZXOj4fZ0xIdZQLO5pjDkQqwcrKbXc/exec';
+    const firstNameInput = document.getElementById('first-name');
+    const lastNameInput = document.getElementById('last-name');
+    const phoneInput = document.getElementById('phone');
+    const actionButton = document.getElementById('action-button');
+    const arrivalContainer = document.getElementById('arrival-container');
+    const formContainer = document.getElementById('form-container');
+    const arrivalMessage = document.getElementById('arrival-message');
+    const leaveButton = document.getElementById('leave-button');
+    const thankContainer = document.getElementById('thank-container');
+
+    function formatDateTime(date) {
+      return date.toLocaleString('fi-FI');
+    }
+
+    actionButton.addEventListener('click', () => {
+      const etunimi = firstNameInput.value.trim();
+      const sukunimi = lastNameInput.value.trim();
+      const puhelin = phoneInput.value.trim();
+      if (!etunimi || !sukunimi || !puhelin) {
+        alert('Täytä kaikki kentät ennen ilmoittautumista.');
+        return;
+      }
+      const now = new Date();
+      const saapumisaika = formatDateTime(now);
+      arrivalMessage.textContent = `Olet saapunut työmaalle ${saapumisaika}`;
+
+      // Näytä saapuminen ja piilota lomake
+      formContainer.classList.add('hidden');
+      arrivalContainer.classList.remove('hidden');
+
+      // Lähetä saapumisilmoitus
+      fetch(scriptURL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'arrival', etunimi, sukunimi, puhelin, saapumisaika })
+      });
+    });
+
+    leaveButton.addEventListener('click', () => {
+      const etunimi = firstNameInput.value.trim();
+      const sukunimi = lastNameInput.value.trim();
+
+      // Piilota saapuminen ja näytä kiitosviesti
+      arrivalContainer.classList.add('hidden');
+      thankContainer.classList.remove('hidden');
+
+      // Lähetä poistumisilmoitus
+      fetch(scriptURL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'departure', etunimi, sukunimi })
+      });
+    });
+  </script>
+
+</body>
+</html>
