@@ -29,9 +29,9 @@
   </div>
 
   <!-- Main content wrapper: hidden until allowed -->
-  <div id="main-content" class="flex-grow flex flex-col items-center justify-center w-full hidden">
+  <div id="main-content" class="flex-grow flex flex-col items-center justify-center w-full hidden px-6">
     <!-- Form Container -->
-    <main id="form-container" class="flex flex-col items-center space-y-6 w-full max-w-md px-6">
+    <main id="form-container" class="flex flex-col items-center space-y-6 w-full max-w-md">
       <input id="first-name" type="text" placeholder="Etunimi" class="w-full p-4 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
       <input id="last-name" type="text" placeholder="Sukunimi" class="w-full p-4 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
       <input id="phone" type="tel" placeholder="Puhelinnumero" class="w-full p-4 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -39,15 +39,15 @@
     </main>
 
     <!-- Arrival Message & Departure Button -->
-    <main id="arrival-container" class="hidden flex flex-col items-center space-y-6 w-full max-w-md px-6">
+    <div id="arrival-container" class="hidden flex flex-col items-center space-y-6 w-full max-w-md">
       <p id="arrival-message" class="text-xl font-medium text-green-700"></p>
       <button id="leave-button" class="w-full px-6 py-4 bg-red-600 text-white rounded-lg text-lg font-medium hover:bg-red-700 transition">Olen poistunut työmaalta!</button>
-    </main>
+    </div>
 
     <!-- Thank You Message -->
-    <main id="thank-container" class="hidden flex items-center w-full max-w-md px-6">
+    <div id="thank-container" class="hidden flex items-center w-full max-w-md">
       <p class="text-xl font-medium text-gray-800">Kiitos! Ilmoituksesi on vastaanotettu.</p>
-    </main>
+    </div>
   </div>
 
   <!-- Footer (sticky bottom) -->
@@ -57,8 +57,9 @@
 
   <!-- Client-side JS -->
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbylwpya5EFhBOZ96KGpBYfs2EcO39MbxbXzwf7ZXOj4fZ0xIdZQLO5pjDkQqwcrKbXc/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbwn7ko4zetXmk_ulbm30Nv3eaK35g6Q8VTNqAr1jp6Nb8e8wAA7y0dQ0fj_Zc36OnU/exec';
 
+    // Element references
     const locationContainer = document.getElementById('location-container');
     const mainContent = document.getElementById('main-content');
     const formContainer = document.getElementById('form-container');
@@ -69,10 +70,9 @@
     const lastNameInput = document.getElementById('last-name');
     const phoneInput = document.getElementById('phone');
     const actionButton = document.getElementById('action-button');
-    const thankContainer = document.getElementById('thank-container');
     const leaveButton = document.getElementById('leave-button');
 
-    // Työmaa-alueen koordinaatit (polygon)
+    // Geolocation polygon for jobsite
     const areaCoords = [
       {lat: 61.4838056, lng: 21.7886944},
       {lat: 61.4835833, lng: 21.7907222},
@@ -81,13 +81,12 @@
     ];
 
     function pointInPolygon(point, vs) {
-      const x = point.lng, y = point.lat;
       let inside = false;
       for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
         const xi = vs[i].lng, yi = vs[i].lat;
         const xj = vs[j].lng, yj = vs[j].lat;
-        const intersect = ((yi > y) !== (yj > y)) &&
-          (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        const intersect = ((yi > point.lat) !== (yj > point.lat)) &&
+          (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
         if (intersect) inside = !inside;
       }
       return inside;
@@ -107,65 +106,61 @@
       document.getElementById('confirm-site').addEventListener('click', enableForm);
     }
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const point = {lat: pos.coords.latitude, lng: pos.coords.longitude};
-          if (pointInPolygon(point, areaCoords)) {
-            enableForm();
-          } else {
-            showManualConfirm();
-          }
-        },
-        err => showManualConfirm(),
-        {enableHighAccuracy:true, timeout:5000}
-      );
-    } else {
-      showManualConfirm();
-    }
-
-    function formatDate(date) { return date.toLocaleDateString('fi-FI'); }
-    function formatTime(date) { return date.toLocaleTimeString('fi-FI', {hour:'2-digit',minute:'2-digit'}); }
-    function saveArrival(data) { localStorage.setItem('arrivalData', JSON.stringify(data)); }
-    function clearArrival() { localStorage.removeItem('arrivalData'); }
-    function getArrival() { const raw = localStorage.getItem('arrivalData'); return raw ? JSON.parse(raw) : null; }
-
-    function showArrival(data) {
-      arrivalMessage.textContent = `Hei ${data.etunimi} ${data.sukunimi}, olet saapunut työmaalle ${data.saapumisaika}`;
-      formContainer.classList.add('hidden'); arrivalContainer.classList.remove('hidden');
-    }
-
+    // Check geolocation on load
     document.addEventListener('DOMContentLoaded', () => {
-      const stored = getArrival();
-      if (stored) {
-        firstNameInput.value = stored.etunimi;
-        lastNameInput.value = stored.sukunimi;
-        phoneInput.value = stored.puhelin;
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const point = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+            if (pointInPolygon(point, areaCoords)) enableForm();
+            else showManualConfirm();
+          },
+          () => showManualConfirm(),
+          {enableHighAccuracy:true, timeout:5000}
+        );
+      } else showManualConfirm();
+
+      // Restore existing arrival
+      const raw = localStorage.getItem('arrivalData');
+      if (raw) {
+        const data = JSON.parse(raw);
+        firstNameInput.value = data.etunimi;
+        lastNameInput.value = data.sukunimi;
+        phoneInput.value = data.puhelin;
         enableForm();
-        showArrival(stored);
+        showArrival(data);
       }
     });
+
+    function formatDate(date) { return date.toLocaleDateString('fi-FI'); }
+    function formatTime(date) { return date.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'}); }
+    function saveArrival(data) { localStorage.setItem('arrivalData', JSON.stringify(data)); }
+    function clearArrival() { localStorage.removeItem('arrivalData'); }
+
+    function showArrival(data) {
+      arrivalMessage.textContent = `Hei ${data.etunimi} ${data.sukunimi}, olet saapunut työmaalle ${data.date} ${data.time}`;
+      formContainer.classList.add('hidden');
+      arrivalContainer.classList.remove('hidden');
+    }
 
     actionButton.addEventListener('click', () => {
       const etunimi = firstNameInput.value.trim();
       const sukunimi = lastNameInput.value.trim();
       const puhelin = phoneInput.value.trim();
-      if (!etunimi || !sukunimi || !puhelin) {
-        alert('Täytä kaikki kentät ennen ilmoittautumista.');
-        return;
-      }
+      if (!etunimi || !sukunimi || !puhelin) return alert('Täytä kaikki kentät ennen ilmoittautumista.');
       const now = new Date();
-      const saapumisaika = `${formatDate(now)} ${formatTime(now)}`;
-      const data = {action:'arrival', etunimi, sukunimi, puhelin, saapumisaika};
-      saveArrival(data);
-      showArrival(data);
+      const data = {action:'arrival', etunimi, sukunimi, puhelin, date:formatDate(now), time:formatTime(now)};
+      saveArrival(data); showArrival(data);
       fetch(scriptURL, {method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     });
 
     leaveButton.addEventListener('click', () => {
-      const stored = getArrival();
+      const raw = localStorage.getItem('arrivalData');
+      const stored = raw?JSON.parse(raw):{};
       const data = {action:'departure', etunimi:stored.etunimi, sukunimi:stored.sukunimi};
-      clearArrival(); arrivalContainer.classList.add('hidden'); thankContainer.classList.remove('hidden');
+      clearArrival();
+      arrivalContainer.classList.add('hidden');
+      thankContainer.classList.remove('hidden');
       fetch(scriptURL, {method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     });
   </script>
