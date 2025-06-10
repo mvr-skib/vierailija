@@ -39,20 +39,45 @@
 
   <!-- Client-side JS -->
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbwn7ko4zetXmk_ulbm30Nv3eaK35g6Q8VTNqAr1jp6Nb8e8wAA7y0dQ0fj_Zc36OnU/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbylwpya5EFhBOZ96KGpBYfs2EcO39MbxbXzwf7ZXOj4fZ0xIdZQLO5pjDkQqwcrKbXc/exec';
+    const formContainer = document.getElementById('form-container');
+    const arrivalContainer = document.getElementById('arrival-container');
+    const thankContainer = document.getElementById('thank-container');
+    const arrivalMessage = document.getElementById('arrival-message');
     const firstNameInput = document.getElementById('first-name');
     const lastNameInput = document.getElementById('last-name');
     const phoneInput = document.getElementById('phone');
     const actionButton = document.getElementById('action-button');
-    const arrivalContainer = document.getElementById('arrival-container');
-    const formContainer = document.getElementById('form-container');
-    const arrivalMessage = document.getElementById('arrival-message');
     const leaveButton = document.getElementById('leave-button');
-    const thankContainer = document.getElementById('thank-container');
 
     function formatDateTime(date) {
       return date.toLocaleString('fi-FI');
     }
+    function saveArrival(data) {
+      localStorage.setItem('arrivalData', JSON.stringify(data));
+    }
+    function clearArrival() {
+      localStorage.removeItem('arrivalData');
+    }
+    function getArrival() {
+      const raw = localStorage.getItem('arrivalData');
+      return raw ? JSON.parse(raw) : null;
+    }
+    function showArrival(data) {
+      arrivalMessage.textContent = `Olet saapunut työmaalle ${data.saapumisaika}`;
+      formContainer.classList.add('hidden');
+      arrivalContainer.classList.remove('hidden');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const stored = getArrival();
+      if (stored) {
+        firstNameInput.value = stored.etunimi;
+        lastNameInput.value = stored.sukunimi;
+        phoneInput.value = stored.puhelin;
+        showArrival(stored);
+      }
+    });
 
     actionButton.addEventListener('click', () => {
       const etunimi = firstNameInput.value.trim();
@@ -64,30 +89,19 @@
       }
       const now = new Date();
       const saapumisaika = formatDateTime(now);
-      arrivalMessage.textContent = `Olet saapunut työmaalle ${saapumisaika}`;
-      formContainer.classList.add('hidden');
-      arrivalContainer.classList.remove('hidden');
-
-      fetch(scriptURL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({action: 'arrival', etunimi, sukunimi, puhelin, saapumisaika})
-      });
+      const data = { action: 'arrival', etunimi, sukunimi, puhelin, saapumisaika };
+      saveArrival(data);
+      showArrival(data);
+      fetch(scriptURL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
     });
 
     leaveButton.addEventListener('click', () => {
-      const etunimi = firstNameInput.value.trim();
-      const sukunimi = lastNameInput.value.trim();
+      const stored = getArrival();
+      const data = { action: 'departure', etunimi: stored.etunimi, sukunimi: stored.sukunimi };
+      clearArrival();
       arrivalContainer.classList.add('hidden');
       thankContainer.classList.remove('hidden');
-
-      fetch(scriptURL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({action: 'departure', etunimi, sukunimi})
-      });
+      fetch(scriptURL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
     });
   </script>
 </body>
