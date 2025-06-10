@@ -3,17 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Bss SKiB Kampus työmaa
-    <p>Vierailija ilmoittautuminen</p>
-  </title>
+  <title>Bss SKiB Kampus työmaa - Vierailija ilmoittautuminen</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 flex flex-col items-center h-screen overflow-hidden pb-24">
   <!-- Header -->
   <header class="w-full text-center p-6">
-    <h1 class="text-3xl font-bold">Bss SKiB Kampus työmaa - Vierailija ilmoittautuminen</h1>
+    <h1 class="text-3xl font-bold">Bss SKiB Kampus työmaa<p>Vierailija ilmoittautuminen</p></h1>
   </header>
+
+  <!-- Reminder Banner -->
+  <div class="w-full bg-yellow-200 text-yellow-900 p-4 text-center px-6">
+    <p class="text-lg">Muista tehdä vierailijaperehdytys: <a href="https://forms.office.com/e/tvmqAmQBYw" target="_blank" class="underline font-medium">Perehdytyslomake - Vierailijat</a></p>
+  </div>
 
   <!-- Main content wrapper: centers form/message vertically -->
   <div class="flex-grow flex items-center justify-center w-full">
@@ -39,7 +42,7 @@
 
   <!-- Footer (sticky bottom) -->
   <footer class="w-full text-center text-xs p-4 bg-white fixed bottom-0 left-0 border-t">
-    Työmaan yhteystiedot: Eteläpuisto 13, 28100 Pori • Puhelinnumero: <a href="tel:+358440153286" class="text-blue-600 hover:underline">+358 44 015 3286</a> • MVR-Yhtymä Oy
+    Työmaan yhteystiedot: Saapuminen: Eteläpuisto 13, 28100 Pori • Puhelinnumero: <a href="tel:+358440153286" class="text-blue-600 hover:underline">+358 44 015 3286</a> • MVR-Yhtymä Oy
   </footer>
 
   <!-- Client-side JS -->
@@ -55,8 +58,11 @@
     const actionButton = document.getElementById('action-button');
     const leaveButton = document.getElementById('leave-button');
 
-    function formatDateTime(date) {
-      return date.toLocaleString('fi-FI');
+    function formatDate(date) {
+      return date.toLocaleDateString('fi-FI');
+    }
+    function formatTime(date) {
+      return date.toLocaleTimeString('fi-FI', {hour: '2-digit', minute: '2-digit'});
     }
     function saveArrival(data) {
       localStorage.setItem('arrivalData', JSON.stringify(data));
@@ -69,7 +75,7 @@
       return raw ? JSON.parse(raw) : null;
     }
     function showArrival(data) {
-      arrivalMessage.textContent = `Olet saapunut työmaalle ${data.saapumisaika}`;
+      arrivalMessage.textContent = `Hei ${data.etunimi} ${data.sukunimi}, olet saapunut työmaalle ${data.date} ${data.time}`;
       formContainer.classList.add('hidden');
       arrivalContainer.classList.remove('hidden');
     }
@@ -93,8 +99,9 @@
         return;
       }
       const now = new Date();
-      const saapumisaika = formatDateTime(now);
-      const data = { action: 'arrival', etunimi, sukunimi, puhelin, saapumisaika };
+      const date = formatDate(now);
+      const time = formatTime(now);
+      const data = { action: 'arrival', etunimi, sukunimi, puhelin, date, time };
       saveArrival(data);
       showArrival(data);
       fetch(scriptURL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
