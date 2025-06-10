@@ -69,6 +69,7 @@
     const lastNameInput = document.getElementById('last-name');
     const phoneInput = document.getElementById('phone');
     const actionButton = document.getElementById('action-button');
+    const thankContainer = document.getElementById('thank-container');
     const leaveButton = document.getElementById('leave-button');
 
     // Työmaa-alueen koordinaatit (polygon)
@@ -121,7 +122,7 @@
     function getArrival() { const raw = localStorage.getItem('arrivalData'); return raw?JSON.parse(raw):null; }
 
     function showArrival(data) {
-      arrivalMessage.textContent = `Hei ${data.etunimi} ${data.sukunimi}, olet saapunut työmaalle ${data.date} ${data.time}`;
+      arrivalMessage.textContent = `Hei ${data.etunimi} ${data.sukunimi}, olet saapunut työmaalle ${data.saapumisaika}`;
       formContainer.classList.add('hidden'); arrivalContainer.classList.remove('hidden');
     }
 
@@ -133,7 +134,9 @@
     actionButton.addEventListener('click', () => {
       const etunimi = firstNameInput.value.trim(), sukunimi = lastNameInput.value.trim(), puhelin = phoneInput.value.trim();
       if (!etunimi || !sukunimi || !puhelin) { alert('Täytä kaikki kentät ennen ilmoittautumista.'); return; }
-      const now = new Date(); const data = {action:'arrival', etunimi, sukunimi, puhelin, date:formatDate(now), time:formatTime(now)};
+      const now = new Date();
+      const saapumisaika = `${formatDate(now)} ${formatTime(now)}`;
+      const data = {action:'arrival', etunimi, sukunimi, puhelin, saapumisaika};
       saveArrival(data); showArrival(data);
       fetch(scriptURL, {method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     });
