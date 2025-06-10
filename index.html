@@ -16,7 +16,7 @@
   <!-- Reminder Banner -->
   <div class="w-full bg-yellow-200 text-yellow-900 p-4 text-center px-6">
     <p class="text-lg">
-      Muista tehdä vierailijaperehdytys: 
+      Muista tehdä vierailijaperehdytys:
       <a href="https://forms.office.com/e/tvmqAmQBYw" target="_blank" rel="noopener noreferrer" class="underline font-medium">
         Perehdytyslomake - Vierailijat
       </a>
@@ -29,21 +29,24 @@
   </div>
 
   <!-- Main content wrapper: hidden until allowed -->
-  <div id="main-content" class="flex-grow flex items-center justify-center w-full hidden">
-    <main id="form-container" class="flex flex-col items-center space-y-6 w-full max-w-md">
+  <div id="main-content" class="flex-grow flex flex-col items-center justify-center w-full hidden">
+    <!-- Form Container -->
+    <main id="form-container" class="flex flex-col items-center space-y-6 w-full max-w-md px-6">
       <input id="first-name" type="text" placeholder="Etunimi" class="w-full p-4 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
       <input id="last-name" type="text" placeholder="Sukunimi" class="w-full p-4 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
       <input id="phone" type="tel" placeholder="Puhelinnumero" class="w-full p-4 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
       <button id="action-button" class="w-full px-6 py-4 bg-blue-600 text-white rounded-lg text-lg font-medium hover:bg-blue-700 transition">Olen saapunut työmaalle</button>
+    </main>
 
-      <main id="arrival-container" class="hidden flex flex-col items-center space-y-6 w-full">
-        <p id="arrival-message" class="text-xl font-medium text-green-700"></p>
-        <button id="leave-button" class="w-full px-6 py-4 bg-red-600 text-white rounded-lg text-lg font-medium hover:bg-red-700 transition">Olen poistunut työmaalta!</button>
-      </main>
+    <!-- Arrival Message & Departure Button -->
+    <main id="arrival-container" class="hidden flex flex-col items-center space-y-6 w-full max-w-md px-6">
+      <p id="arrival-message" class="text-xl font-medium text-green-700"></p>
+      <button id="leave-button" class="w-full px-6 py-4 bg-red-600 text-white rounded-lg text-lg font-medium hover:bg-red-700 transition">Olen poistunut työmaalta!</button>
+    </main>
 
-      <main id="thank-container" class="hidden flex items-center w-full">
-        <p class="text-xl font-medium text-gray-800">Kiitos! Ilmoituksesi on vastaanotettu.</p>
-      </main>
+    <!-- Thank You Message -->
+    <main id="thank-container" class="hidden flex items-center w-full max-w-md px-6">
+      <p class="text-xl font-medium text-gray-800">Kiitos! Ilmoituksesi on vastaanotettu.</p>
     </main>
   </div>
 
@@ -76,10 +79,8 @@
       {lat: 61.4843333, lng: 21.7911944}
     ];
 
-    // Piste polygonin sisällä -tarkistus (ray-casting)
     function pointInPolygon(point, vs) {
-      const x = point.lng, y = point.lat;
-      let inside = false;
+      const x = point.lng, y = point.lat; let inside = false;
       for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
         const xi = vs[i].lng, yi = vs[i].lat;
         const xj = vs[j].lng, yj = vs[j].lat;
@@ -90,45 +91,35 @@
       return inside;
     }
 
-    function enableForm()
-    {
+    function enableForm() {
       locationContainer.classList.add('hidden');
       mainContent.classList.remove('hidden');
     }
 
     function showManualConfirm() {
       locationContainer.innerHTML = `
-        <div class="text-center">
+        <div class="text-center px-6">
           <p class="text-lg mb-4">Et ole työmaan alueella tai sijaintia ei saatu.</p>
           <button id="confirm-site" class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium">Olen työmaalla</button>
         </div>`;
-      document.getElementById('confirm-site')
-        .addEventListener('click', enableForm);
+      document.getElementById('confirm-site').addEventListener('click', enableForm);
     }
 
-    // Geolocation
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         pos => {
           const point = {lat: pos.coords.latitude, lng: pos.coords.longitude};
-          if (pointInPolygon(point, areaCoords)) {
-            enableForm();
-          } else {
-            showManualConfirm();
-          }
-        },
-        err => showManualConfirm(),
-        {enableHighAccuracy: true, timeout: 5000}
+          if (pointInPolygon(point, areaCoords)) enableForm(); else showManualConfirm();
+        }, err => showManualConfirm(), {enableHighAccuracy:true, timeout:5000}
       );
-    } else {
-      showManualConfirm();
-    }
+    } else showManualConfirm();
 
     function formatDate(date) { return date.toLocaleDateString('fi-FI'); }
-    function formatTime(date) { return date.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'}); }
+    function formatTime(date) { return date.toLocaleTimeString('fi-FI', {hour:'2-digit',minute:'2-digit'}); }
     function saveArrival(data) { localStorage.setItem('arrivalData', JSON.stringify(data)); }
     function clearArrival() { localStorage.removeItem('arrivalData'); }
     function getArrival() { const raw = localStorage.getItem('arrivalData'); return raw?JSON.parse(raw):null; }
+
     function showArrival(data) {
       arrivalMessage.textContent = `Hei ${data.etunimi} ${data.sukunimi}, olet saapunut työmaalle ${data.date} ${data.time}`;
       formContainer.classList.add('hidden'); arrivalContainer.classList.remove('hidden');
@@ -136,24 +127,21 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       const stored = getArrival();
-      if (stored) {
-        firstNameInput.value = stored.etunimi; lastNameInput.value = stored.sukunimi; phoneInput.value = stored.puhelin;
-        enableForm(); showArrival(stored);
-      }
+      if (stored) { firstNameInput.value = stored.etunimi; lastNameInput.value = stored.sukunimi; phoneInput.value = stored.puhelin; enableForm(); showArrival(stored); }
     });
 
     actionButton.addEventListener('click', () => {
-      const etunimi = firstNameInput.value.trim(); const sukunimi = lastNameInput.value.trim(); const puhelin = phoneInput.value.trim();
-      if (!etunimi||!sukunimi||!puhelin) { alert('Täytä kaikki kentät ennen ilmoittautumista.'); return; }
-      const now = new Date(); const data = { action:'arrival', etunimi, sukunimi, puhelin, date:formatDate(now), time:formatTime(now) };
+      const etunimi = firstNameInput.value.trim(), sukunimi = lastNameInput.value.trim(), puhelin = phoneInput.value.trim();
+      if (!etunimi || !sukunimi || !puhelin) { alert('Täytä kaikki kentät ennen ilmoittautumista.'); return; }
+      const now = new Date(); const data = {action:'arrival', etunimi, sukunimi, puhelin, date:formatDate(now), time:formatTime(now)};
       saveArrival(data); showArrival(data);
-      fetch(scriptURL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      fetch(scriptURL, {method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     });
 
-    leaveButton.addEventListener('click',()=>{
-      const stored = getArrival(); const data={action:'departure',etunimi:stored.etunimi,sukunimi:stored.sukunimi};
+    leaveButton.addEventListener('click', () => {
+      const stored = getArrival(); const data = {action:'departure', etunimi:stored.etunimi, sukunimi:stored.sukunimi};
       clearArrival(); arrivalContainer.classList.add('hidden'); thankContainer.classList.remove('hidden');
-      fetch(scriptURL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      fetch(scriptURL, {method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     });
   </script>
 </body>
