@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SKiB - Vierailijat</title>
+  <title>Työmaa Dashboard</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Firebase SDKs -->
@@ -12,12 +12,21 @@
 </head>
 <body class="bg-gray-50 p-6">
   <header class="text-center mb-8">
-    <h1 class="text-4xl font-bold">SKiB Kampus työmaan - Vierailijat</h1>
+    <h1 class="text-4xl font-bold">Työmaan Vierailija Dashboard</h1>
   </header>
 
-  <main class="max-w-4xl mx-auto">
+  <main class="max-w-4xl mx-auto space-y-8">
+
+    <!-- Manual Add Visitors -->
+    <section class="bg-white p-6 rounded-lg shadow">
+      <h2 class="text-2xl font-semibold mb-4">Lisää vieraita työmaalle</h2>
+      <div id="manual-list" class="space-y-4 mb-4"></div>
+      <button id="add-row" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">+ Lisää vieras</button>
+      <button id="save-visitors" class="ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Tallenna vieraat</button>
+    </section>
+
     <!-- Totals -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="bg-white p-6 rounded-lg shadow text-center">
         <h2 class="text-2xl font-semibold mb-2">Tällä hetkellä työmaalla</h2>
         <p id="current-count" class="text-5xl font-bold text-blue-600">–</p>
@@ -29,7 +38,7 @@
     </div>
 
     <!-- Visitor List Button -->
-    <div class="text-center mb-8">
+    <div class="text-center">
       <button id="show-list" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">Vierailijaluettelo</button>
     </div>
 
@@ -44,15 +53,16 @@
           <tr class="bg-gray-100">
             <th class="p-2 border">Etunimi</th>
             <th class="p-2 border">Sukunimi</th>
+            <th class="p-2 border">Puhelin</th>
             <th class="p-2 border">Saapumisaika</th>
             <th class="p-2 border">Poistumisaika</th>
+            <th class="p-2 border" id="actions-header">Toiminnot</th>
           </tr>
         </thead>
-        <tbody id="visitor-table">
-          <!-- Dynaaminen rivi -->
-        </tbody>
+        <tbody id="visitor-table"></tbody>
       </table>
     </section>
+
   </main>
 
   <script>
@@ -69,85 +79,110 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    const manualList = document.getElementById('manual-list');
+    const addRowBtn = document.getElementById('add-row');
+    const saveVisitorsBtn = document.getElementById('save-visitors');
+    const currentCountEl = document.getElementById('current-count');
+    const todayCountEl = document.getElementById('today-count');
     const showListBtn = document.getElementById('show-list');
     const listSection = document.getElementById('list-section');
     const visitorTable = document.getElementById('visitor-table');
     const filterDate = document.getElementById('filter-date');
     const printBtn = document.getElementById('print-list');
-    const currentCountEl = document.getElementById('current-count');
-    const todayCountEl = document.getElementById('today-count');
+    const actionsHeader = document.getElementById('actions-header');
 
-    // Utility: format timestamp to fi locale
-    function formatTS(ts) {
-      return ts.toDate().toLocaleString('fi-FI', {hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'});
+    function addManualRow() {
+      const div = document.createElement('div');
+      div.className = 'flex space-x-2';
+      div.innerHTML = `
+        <input type="text" placeholder="Etunimi" class="flex-1 p-2 border rounded" />
+        <input type="text" placeholder="Sukunimi" class="flex-1 p-2 border rounded" />
+        <input type="tel" placeholder="Puhelin" class="flex-1 p-2 border rounded" />
+        <button class="remove-row px-2 bg-red-500 text-white rounded">–</button>
+      `;
+      manualList.appendChild(div);
+      div.querySelector('.remove-row').onclick = () => div.remove();
     }
 
-    // Load counts
+    addRowBtn.onclick = addManualRow;
+    addManualRow();
+
+    saveVisitorsBtn.onclick = async () => {
+      const rows = manualList.querySelectorAll('div');
+      for (const row of rows) {
+        const inputs = row.querySelectorAll('input');
+        const firstName = inputs[0].value.trim();
+        const lastName = inputs[1].value.trim();
+        const phone = inputs[2].value.trim();
+        if (firstName && lastName) {
+          const now = new Date();
+          const ts = now.toLocaleString('fi-FI', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+          await db.collection('visitors').add({ firstName, lastName, phone, arrivalTime: ts, departureTime: null, created: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+      }
+      manualList.innerHTML = '';
+      addManualRow();
+      loadCounts();
+    };
+
     function loadCounts() {
       const today = new Date();
       const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      db.collection('visitors')
-        .get()
-        .then(snapshot => {
-          let current=0, todayCount=0;
-          snapshot.forEach(doc => {
-            const v = doc.data();
-            const created = v.created && v.created.toDate ? v.created.toDate() : null;
-            if (!v.departureTime) current++;
-            if (created && created >= start) todayCount++;
-          });
-          currentCountEl.textContent = current;
-          todayCountEl.textContent = todayCount;
+      db.collection('visitors').get().then(snapshot => {
+        let current = 0, todayCount = 0;
+        snapshot.forEach(doc => {
+          const v = doc.data();
+          const created = v.created && v.created.toDate();
+          if (!v.departureTime) current++;
+          if (created && created >= start) todayCount++;
         });
+        currentCountEl.textContent = current;
+        todayCountEl.textContent = todayCount;
+      });
     }
 
-    // Populate table
-    function loadList(dateFilter) {
+    function loadList() {
       visitorTable.innerHTML = '';
-      db.collection('visitors')
-        .orderBy('created')
-        .get()
-        .then(snapshot => {
-          snapshot.forEach(doc => {
-            const v = doc.data();
-            const created = v.created && v.created.toDate ? v.created.toDate() : null;
-            if (dateFilter) {
-              const d = new Date(dateFilter);
-              if (!created || created.toDateString() !== d.toDateString()) return;
-            }
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="p-2 border">${v.firstName}</td>
-              <td class="p-2 border">${v.lastName}</td>
-              <td class="p-2 border">${v.arrivalTime}</td>
-              <td class="p-2 border">${v.departureTime || '-'}</td>
-            `;
-            visitorTable.appendChild(tr);
-          });
+      const dateFilterVal = filterDate.value;
+      let hasPending = false;
+      db.collection('visitors').orderBy('created').get().then(snapshot => {
+        snapshot.docs.forEach(doc => { if (!doc.data().departureTime) hasPending = true; });
+        actionsHeader.style.display = hasPending ? '' : 'none';
+        snapshot.forEach(doc => {
+          const v = doc.data();
+          const created = v.created && v.created.toDate();
+          if (dateFilterVal) {
+            const d = new Date(dateFilterVal);
+            if (!created || created.toDateString() !== d.toDateString()) return;
+          }
+          const tr = document.createElement('tr'); tr.className = 'border-b';
+          tr.innerHTML = `
+            <td class="p-2">${v.firstName}</td>
+            <td class="p-2">${v.lastName}</td>
+            <td class="p-2">${v.phone || ''}</td>
+            <td class="p-2">${v.arrivalTime}</td>
+            <td class="p-2">${v.departureTime || '-'}</td>
+            <td class="p-2" style="display:${(!hasPending||v.departureTime)?'none':''}">
+              <button data-id="${doc.id}" class="end-visit px-2 py-1 bg-red-500 text-white rounded">Päätä vierailu</button>
+            </td>
+          `;
+          visitorTable.appendChild(tr);
         });
+        document.querySelectorAll('.end-visit').forEach(btn => {
+          btn.onclick = () => {
+            const id = btn.dataset.id;
+            const now = new Date().toLocaleString('fi-FI', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+            db.collection('visitors').doc(id).update({ departureTime: now }).then(() => { loadCounts(); loadList(); });
+          };
+        });
+      });
     }
 
-    showListBtn.addEventListener('click', () => {
-      listSection.classList.toggle('hidden');
-      loadList(filterDate.value);
-    });
-    filterDate.addEventListener('change', () => loadList(filterDate.value));
-    printBtn.addEventListener('click', () => window.print());
+    showListBtn.onclick = () => { listSection.classList.toggle('hidden'); loadList(); };
+    filterDate.onchange = loadList;
+    printBtn.onclick = () => window.print();
 
-    // Notification script at 15:30
-    const notifyUrl = 'https://script.google.com/macros/s/AKfycbw8Ee-ZAAhloJQ8LKHVg7V8hDYT13kcGgkE0080G-uXO6qXfgoA71irnULi5U3aU-W7/exec';
-    function scheduleNotification() {
-      const now = new Date();
-      const target = new Date();
-      target.setHours(15,30,0,0);
-      let ms = target - now;
-      if (ms < 0) ms += 24*60*60*1000;
-      setTimeout(() => fetch(notifyUrl), ms);
-    }
-
-    // Init
     loadCounts();
-    scheduleNotification();
   </script>
 </body>
 </html>
