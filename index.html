@@ -70,13 +70,12 @@
       appId: "1:629282309991:web:7229151d172a40197e51c2",
       measurementId: "G-TSYEXHN8VE"
     };
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwn7ko4zetXmk_ulbm30Nv3eaK35g6Q8VTNqAr1jp6Nb8e8wAA7y0dQ0fj_Zc36OnU/exec';
 
-    // DOM elements
+    // Element references
     const locationContainer = document.getElementById('location-container');
     const mainContent = document.getElementById('main-content');
     const formContainer = document.getElementById('form-container');
@@ -124,7 +123,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Geolocation
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
@@ -148,12 +146,12 @@
       }
     });
 
-    function formatDateTime(date) { return date.toLocaleString('fi-FI', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+    function formatDateTime(date) { 
+      return date.toLocaleString('fi-FI', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    }
 
     function saveArrival(data) {
-      // Save to localStorage
       localStorage.setItem('arrivalData', JSON.stringify(data));
-      // Save to Firestore and store docId
       db.collection('visitors').add({
         firstName: data.etunimi,
         lastName: data.sukunimi,
@@ -167,6 +165,9 @@
     }
 
     function clearArrival() {
+      // retrieve before clearing
+      const raw = localStorage.getItem('arrivalData');
+      const data = raw ? JSON.parse(raw) : {};
       localStorage.removeItem('arrivalData');
       const docId = localStorage.getItem('visitorDocId');
       if (docId) {
@@ -175,6 +176,7 @@
         }).catch(console.error);
         localStorage.removeItem('visitorDocId');
       }
+      return data; // return stored data for email
     }
 
     function showArrival(data) {
@@ -197,11 +199,9 @@
     });
 
     leaveButton.addEventListener('click', () => {
-      clearArrival();
+      const stored = clearArrival();
       arrivalContainer.classList.add('hidden');
       thankContainer.classList.remove('hidden');
-      const raw = localStorage.getItem('arrivalData');
-      const stored = raw ? JSON.parse(raw) : {};
       const data = {action:'departure', etunimi:stored.etunimi, sukunimi:stored.sukunimi};
       fetch(scriptURL, {method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     });
