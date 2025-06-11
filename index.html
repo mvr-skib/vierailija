@@ -6,6 +6,9 @@
   <title>Bss SKiB Kampus työmaa - Vierailija ilmoittautuminen</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 </head>
 <body class="bg-gray-100 flex flex-col items-center h-screen overflow-hidden pb-24">
   <!-- Header -->
@@ -57,6 +60,20 @@
 
   <!-- Client-side JS -->
   <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPY9RchjfBLHixXNyIiPhYDoAIoK4wCC8",
+      authDomain: "skib-vierailijat.firebaseapp.com",
+      projectId: "skib-vierailijat",
+      storageBucket: "skib-vierailijat.firebasestorage.app",
+      messagingSenderId: "629282309991",
+      appId: "1:629282309991:web:7229151d172a40197e51c2",
+      measurementId: "G-TSYEXHN8VE"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwn7ko4zetXmk_ulbm30Nv3eaK35g6Q8VTNqAr1jp6Nb8e8wAA7y0dQ0fj_Zc36OnU/exec';
 
     // DOM elements
@@ -72,7 +89,7 @@
     const actionButton = document.getElementById('action-button');
     const leaveButton = document.getElementById('leave-button');
 
-    // Jobsite polygon coordinates
+    // Jobsite area polygon coordinates
     const areaCoords = [
       {lat: 61.4838056, lng: 21.7886944},
       {lat: 61.4835833, lng: 21.7907222},
@@ -133,8 +150,32 @@
 
     function formatDateTime(date) { return date.toLocaleString('fi-FI', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
 
-    function saveArrival(data) { localStorage.setItem('arrivalData', JSON.stringify(data)); }
-    function clearArrival() { localStorage.removeItem('arrivalData'); }
+    function saveArrival(data) {
+      // Save to localStorage
+      localStorage.setItem('arrivalData', JSON.stringify(data));
+      // Save to Firestore and store docId
+      db.collection('visitors').add({
+        firstName: data.etunimi,
+        lastName: data.sukunimi,
+        phone: data.puhelin,
+        arrivalTime: data.saapumisaika,
+        departureTime: null,
+        created: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(docRef => {
+        localStorage.setItem('visitorDocId', docRef.id);
+      }).catch(console.error);
+    }
+
+    function clearArrival() {
+      localStorage.removeItem('arrivalData');
+      const docId = localStorage.getItem('visitorDocId');
+      if (docId) {
+        db.collection('visitors').doc(docId).update({
+          departureTime: formatDateTime(new Date())
+        }).catch(console.error);
+        localStorage.removeItem('visitorDocId');
+      }
+    }
 
     function showArrival(data) {
       arrivalMessage.textContent = `Hei ${data.etunimi} ${data.sukunimi}, olet saapunut työmaalle ${data.saapumisaika}`;
@@ -156,12 +197,12 @@
     });
 
     leaveButton.addEventListener('click', () => {
-      const raw = localStorage.getItem('arrivalData');
-      const stored = raw ? JSON.parse(raw) : {};
-      const data = {action:'departure', etunimi:stored.etunimi, sukunimi:stored.sukunimi};
       clearArrival();
       arrivalContainer.classList.add('hidden');
       thankContainer.classList.remove('hidden');
+      const raw = localStorage.getItem('arrivalData');
+      const stored = raw ? JSON.parse(raw) : {};
+      const data = {action:'departure', etunimi:stored.etunimi, sukunimi:stored.sukunimi};
       fetch(scriptURL, {method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     });
   </script>
