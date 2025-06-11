@@ -10,57 +10,61 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 </head>
-<body class="bg-gray-50 p-6">
-  <header class="text-center mb-8">
-    <h1 class="text-4xl font-bold">SKiB - Työmaan Vierailijat</h1>
+<body class="bg-gray-50 p-4 overflow-x-hidden">
+  <header class="text-center mb-6">
+    <h1 class="text-3xl font-bold">SKiB - Työmaan Vierailijat</h1>
   </header>
 
-  <main class="max-w-4xl mx-auto space-y-8">
+  <main class="max-w-full mx-auto space-y-6">
 
     <!-- Manual Add Visitors -->
-    <section class="bg-white p-6 rounded-lg shadow">
-      <h2 class="text-2xl font-semibold mb-4">Lisää vieraita työmaalle</h2>
+    <section class="bg-white p-4 rounded-lg shadow">
+      <h2 class="text-xl font-semibold mb-4">Lisää vieraita työmaalle</h2>
       <div id="manual-list" class="space-y-4 mb-4"></div>
-      <button id="add-row" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">+ Lisää vieras</button>
-      <button id="save-visitors" class="ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Tallenna vieraat</button>
+      <div class="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+        <button id="add-row" class="flex-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">+ Lisää vieras</button>
+        <button id="save-visitors" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Tallenna vieraat</button>
+      </div>
     </section>
 
     <!-- Totals -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="bg-white p-6 rounded-lg shadow text-center">
-        <h2 class="text-2xl font-semibold mb-2">Tällä hetkellä työmaalla</h2>
-        <p id="current-count" class="text-5xl font-bold text-blue-600">–</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white p-4 rounded-lg shadow text-center">
+        <h2 class="text-xl font-semibold mb-1">Tällä hetkellä työmaalla</h2>
+        <p id="current-count" class="text-4xl font-bold text-blue-600">–</p>
       </div>
-      <div class="bg-white p-6 rounded-lg shadow text-center">
-        <h2 class="text-2xl font-semibold mb-2">Vierailijoita tänään</h2>
-        <p id="today-count" class="text-5xl font-bold text-green-600">–</p>
+      <div class="bg-white p-4 rounded-lg shadow text-center">
+        <h2 class="text-xl font-semibold mb-1">Vierailijoita tänään</h2>
+        <p id="today-count" class="text-4xl font-bold text-green-600">–</p>
       </div>
     </div>
 
     <!-- Visitor List Button -->
     <div class="text-center">
-      <button id="show-list" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">Vierailijaluettelo</button>
+      <button id="show-list" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Vierailijaluettelo</button>
     </div>
 
     <!-- List View -->
-    <section id="list-section" class="hidden bg-white p-6 rounded-lg shadow">
-      <div class="flex justify-between items-center mb-4">
-        <input type="date" id="filter-date" class="p-2 border rounded" />
+    <section id="list-section" class="hidden bg-white p-4 rounded-lg shadow overflow-x-hidden">
+      <div class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-4 space-y-2 sm:space-y-0">
+        <input type="date" id="filter-date" class="p-2 border rounded w-full sm:w-auto" />
         <button id="print-list" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Tulosta</button>
       </div>
-      <table class="w-full table-auto border-collapse">
-        <thead>
-          <tr class="bg-gray-100">
-            <th class="p-2 border">Etunimi</th>
-            <th class="p-2 border">Sukunimi</th>
-            <th class="p-2 border">Puhelin</th>
-            <th class="p-2 border">Saapumisaika</th>
-            <th class="p-2 border">Poistumisaika</th>
-            <th class="p-2 border" id="actions-header">Toiminnot</th>
-          </tr>
-        </thead>
-        <tbody id="visitor-table"></tbody>
-      </table>
+      <div class="overflow-hidden">
+        <table class="table-fixed w-full border-collapse text-sm">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="p-2 border w-1/6">Etunimi</th>
+              <th class="p-2 border w-1/6">Sukunimi</th>
+              <th class="p-2 border w-1/6">Puhelin</th>
+              <th class="p-2 border w-1/6">Saapumisaika</th>
+              <th class="p-2 border w-1/6">Poistumisaika</th>
+              <th class="p-2 border w-1/6" id="actions-header">Toiminnot</th>
+            </tr>
+          </thead>
+          <tbody id="visitor-table"></tbody>
+        </table>
+      </div>
     </section>
 
   </main>
@@ -93,7 +97,7 @@
 
     function addManualRow() {
       const div = document.createElement('div');
-      div.className = 'flex space-x-2';
+      div.className = 'flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0';
       div.innerHTML = `
         <input type="text" placeholder="Etunimi" class="flex-1 p-2 border rounded" />
         <input type="text" placeholder="Sukunimi" class="flex-1 p-2 border rounded" />
@@ -111,9 +115,7 @@
       const rows = manualList.querySelectorAll('div');
       for (const row of rows) {
         const inputs = row.querySelectorAll('input');
-        const firstName = inputs[0].value.trim();
-        const lastName = inputs[1].value.trim();
-        const phone = inputs[2].value.trim();
+        const [firstName, lastName, phone] = Array.from(inputs).map(i => i.value.trim());
         if (firstName && lastName) {
           const now = new Date();
           const ts = now.toLocaleString('fi-FI', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
@@ -157,11 +159,11 @@
           }
           const tr = document.createElement('tr'); tr.className = 'border-b';
           tr.innerHTML = `
-            <td class="p-2">${v.firstName}</td>
-            <td class="p-2">${v.lastName}</td>
-            <td class="p-2">${v.phone || ''}</td>
-            <td class="p-2">${v.arrivalTime}</td>
-            <td class="p-2">${v.departureTime || '-'}</td>
+            <td class="p-2 truncate">${v.firstName}</td>
+            <td class="p-2 truncate">${v.lastName}</td>
+            <td class="p-2 truncate">${v.phone || ''}</td>
+            <td class="p-2 truncate">${v.arrivalTime}</td>
+            <td class="p-2 truncate">${v.departureTime || '-'}</td>
             <td class="p-2" style="display:${(!hasPending||v.departureTime)?'none':''}">
               <button data-id="${doc.id}" class="end-visit px-2 py-1 bg-red-500 text-white rounded">Päätä vierailu</button>
             </td>
