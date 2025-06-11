@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SKiB - Vierailijat</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+</head>
+<body class="bg-gray-50 p-6">
+  <header class="text-center mb-8">
+    <h1 class="text-4xl font-bold">SKiB Kampus työmaan - Vierailijat</h1>
+  </header>
+
+  <main class="max-w-4xl mx-auto">
+    <!-- Totals -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div class="bg-white p-6 rounded-lg shadow text-center">
+        <h2 class="text-2xl font-semibold mb-2">Tällä hetkellä työmaalla</h2>
+        <p id="current-count" class="text-5xl font-bold text-blue-600">–</p>
+      </div>
+      <div class="bg-white p-6 rounded-lg shadow text-center">
+        <h2 class="text-2xl font-semibold mb-2">Vierailijoita tänään</h2>
+        <p id="today-count" class="text-5xl font-bold text-green-600">–</p>
+      </div>
+    </div>
+
+    <!-- Visitor List Button -->
+    <div class="text-center mb-8">
+      <button id="show-list" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">Vierailijaluettelo</button>
+    </div>
+
+    <!-- List View -->
+    <section id="list-section" class="hidden bg-white p-6 rounded-lg shadow">
+      <div class="flex justify-between items-center mb-4">
+        <input type="date" id="filter-date" class="p-2 border rounded" />
+        <button id="print-list" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Tulosta</button>
+      </div>
+      <table class="w-full table-auto border-collapse">
+        <thead>
+          <tr class="bg-gray-100">
+            <th class="p-2 border">Etunimi</th>
+            <th class="p-2 border">Sukunimi</th>
+            <th class="p-2 border">Saapumisaika</th>
+            <th class="p-2 border">Poistumisaika</th>
+          </tr>
+        </thead>
+        <tbody id="visitor-table">
+          <!-- Dynaaminen rivi -->
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPY9RchjfBLHixXNyIiPhYDoAIoK4wCC8",
+      authDomain: "skib-vierailijat.firebaseapp.com",
+      projectId: "skib-vierailijat",
+      storageBucket: "skib-vierailijat.firebasestorage.app",
+      messagingSenderId: "629282309991",
+      appId: "1:629282309991:web:7229151d172a40197e51c2",
+      measurementId: "G-TSYEXHN8VE"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const showListBtn = document.getElementById('show-list');
+    const listSection = document.getElementById('list-section');
+    const visitorTable = document.getElementById('visitor-table');
+    const filterDate = document.getElementById('filter-date');
+    const printBtn = document.getElementById('print-list');
+    const currentCountEl = document.getElementById('current-count');
+    const todayCountEl = document.getElementById('today-count');
+
+    // Utility: format timestamp to fi locale
+    function formatTS(ts) {
+      return ts.toDate().toLocaleString('fi-FI', {hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'});
+    }
+
+    // Load counts
+    function loadCounts() {
+      const today = new Date();
+      const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      db.collection('visitors')
+        .get()
+        .then(snapshot => {
+          let current=0, todayCount=0;
+          snapshot.forEach(doc => {
+            const v = doc.data();
+            const created = v.created && v.created.toDate ? v.created.toDate() : null;
+            if (!v.departureTime) current++;
+            if (created && created >= start) todayCount++;
+          });
+          currentCountEl.textContent = current;
+          todayCountEl.textContent = todayCount;
+        });
+    }
+
+    // Populate table
+    function loadList(dateFilter) {
+      visitorTable.innerHTML = '';
+      db.collection('visitors')
+        .orderBy('created')
+        .get()
+        .then(snapshot => {
+          snapshot.forEach(doc => {
+            const v = doc.data();
+            const created = v.created && v.created.toDate ? v.created.toDate() : null;
+            if (dateFilter) {
+              const d = new Date(dateFilter);
+              if (!created || created.toDateString() !== d.toDateString()) return;
+            }
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="p-2 border">${v.firstName}</td>
+              <td class="p-2 border">${v.lastName}</td>
+              <td class="p-2 border">${v.arrivalTime}</td>
+              <td class="p-2 border">${v.departureTime || '-'}</td>
+            `;
+            visitorTable.appendChild(tr);
+          });
+        });
+    }
+
+    showListBtn.addEventListener('click', () => {
+      listSection.classList.toggle('hidden');
+      loadList(filterDate.value);
+    });
+    filterDate.addEventListener('change', () => loadList(filterDate.value));
+    printBtn.addEventListener('click', () => window.print());
+
+    // Notification script at 15:30
+    const notifyUrl = 'https://script.google.com/macros/s/AKfycbw8Ee-ZAAhloJQ8LKHVg7V8hDYT13kcGgkE0080G-uXO6qXfgoA71irnULi5U3aU-W7/exec';
+    function scheduleNotification() {
+      const now = new Date();
+      const target = new Date();
+      target.setHours(15,30,0,0);
+      let ms = target - now;
+      if (ms < 0) ms += 24*60*60*1000;
+      setTimeout(() => fetch(notifyUrl), ms);
+    }
+
+    // Init
+    loadCounts();
+    scheduleNotification();
+  </script>
+</body>
+</html>
